@@ -1,0 +1,16 @@
+plugins {
+    id 'net.neoforged.moddev.legacyforge' version '2.0.77' apply(false)
+}
+
+// 源码注释包含中文，统一使用 UTF-8 编译（Windows 默认 GBK 会导致 javac 报错）
+subprojects {
+    tasks.withType(JavaCompile).configureEach {
+        options.encoding = 'UTF-8'
+    }
+    tasks.withType(Javadoc).configureEach {
+        options.encoding = 'UTF-8'
+        options.charSet = 'UTF-8'
+        // 注释为中文文档，不允许 Javadoc 严格检查阻断构建
+        failOnError = false
+    }
+}

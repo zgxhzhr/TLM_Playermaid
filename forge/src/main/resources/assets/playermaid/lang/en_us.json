@@ -1,0 +1,7 @@
+{
+  "gui.playermaid.main.title": "Maid Main GUI",
+  "gui.playermaid.bauble.title": "Maid Baubles",
+  "command.playermaid.player_only": "This command can only be executed by a player",
+  "command.playermaid.clear.not_active": "You are not in fox-maid state",
+  "command.playermaid.clear.success": "Fox-maid state cleared (backpack and baubles are kept and will be restored when re-enabled)"
+}

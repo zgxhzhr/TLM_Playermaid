@@ -1,0 +1,37 @@
+modLoader = "javafml" #mandatory
+loaderVersion = "${forge_loader_version_range}" #mandatory
+license = "${license}"
+[[mods]] #mandatory
+modId = "${mod_id}" #mandatory
+version = "${version}" #mandatory
+displayName = "${mod_name}" #mandatory
+authors = "${mod_author}" #optional
+description = '''${description}''' #mandatory
+[[dependencies.${mod_id}]]
+modId = "forge"
+mandatory = true
+versionRange = "[${forge_version},)"
+ordering = "NONE"
+side = "BOTH"
+[[dependencies.${mod_id}]]
+modId = "minecraft"
+mandatory = true
+versionRange = "${minecraft_version_range}"
+ordering = "NONE"
+side = "BOTH"
+
+# 必选：车万女仆（界面贴图、女仆饰品判定均来自 TLM）
+[[dependencies.${mod_id}]]
+modId = "touhou_little_maid"
+mandatory = true
+versionRange = "*"
+ordering = "AFTER"
+side = "BOTH"
+
+# 可选：Jade（准心信息面板）。未安装时 Jade 相关功能缺席，其余功能正常。
+[[dependencies.${mod_id}]]
+modId = "jade"
+mandatory = false
+versionRange = "*"
+ordering = "AFTER"
+side = "BOTH"
