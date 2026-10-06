@@ -3,7 +3,9 @@ package io.github.zgxhzhr.playermaid.api;
 import io.github.zgxhzhr.playermaid.data.FoxMaidData;
 import io.github.zgxhzhr.playermaid.data.FoxMaidManager;
 import io.github.zgxhzhr.playermaid.data.ScheduleMode;
+import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerPlayer;
+import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
 
@@ -15,6 +17,8 @@ import javax.annotation.Nullable;
  * 所有写操作会立即落盘并向本人与追踪者同步。</p>
  */
 public final class FoxMaidApi {
+
+    private static final Logger LOGGER = LogUtils.getLogger();
 
     private FoxMaidApi() {
     }
@@ -63,6 +67,24 @@ public final class FoxMaidApi {
     public static void setOwnerName(ServerPlayer player, @Nullable String ownerName) {
         FoxMaidData data = FoxMaidManager.getOrCreate(player);
         data.setOwnerName(ownerName);
+        FoxMaidManager.persistAndSync(player);
+    }
+
+    /** 魂符展示模型 id（车万女仆女仆模型 id），未设置返回 null。 */
+    @Nullable
+    public static String getSlabModelId(ServerPlayer player) {
+        String result = FoxMaidManager.getOrCreate(player).getSlabModelId();
+        LOGGER.info("[playermaid] FoxMaidApi.getSlabModelId: player={} result={}",
+                player.getName().getString(), result);
+        return result;
+    }
+
+    /** 设置魂符展示模型 id；传 null 或空串清除。仅服务端持久化，无需客户端同步包。 */
+    public static void setSlabModelId(ServerPlayer player, @Nullable String slabModelId) {
+        LOGGER.info("[playermaid] FoxMaidApi.setSlabModelId: player={} received={}",
+                player.getName().getString(), slabModelId);
+        FoxMaidData data = FoxMaidManager.getOrCreate(player);
+        data.setSlabModelId(slabModelId);
         FoxMaidManager.persistAndSync(player);
     }
 

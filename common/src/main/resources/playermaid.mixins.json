@@ -5,12 +5,15 @@
   "compatibilityLevel": "JAVA_17",
   "refmap": "${mod_id}.refmap.json",
   "mixins": [
+    "BlockMaidBedMixin"
   ],
   "client": [
     "PlayerNameTagMixin",
     "FoxNameTagVisibilityMixin",
-    "JadeNameProviderMixin",
-    "JadeModNameMixin"
+    "PlayerHaloRenderMixin",
+    "ItemStackFoxTooltipMixin",
+    "JadeModNameMixin",
+    "JadeYsmModelLineFilterMixin"
   ],
   "injectors": {
     "defaultRequire": 0

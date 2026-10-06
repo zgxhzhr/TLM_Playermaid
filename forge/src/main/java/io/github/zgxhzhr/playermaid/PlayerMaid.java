@@ -31,7 +31,5 @@ public class PlayerMaid {
         MinecraftForge.EVENT_BUS.register(FoxMaidManager.class);
         // 非潜行右键玩家打开界面
         MinecraftForge.EVENT_BUS.register(FoxMaidInteractHandler.class);
-        // /playermaid 指令
-        MinecraftForge.EVENT_BUS.register(io.github.zgxhzhr.playermaid.command.FoxMaidCommands.class);
     }
 }

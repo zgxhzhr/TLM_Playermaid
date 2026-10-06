@@ -38,7 +38,10 @@ public final class FoxMaidManager {
      */
     public static FoxMaidData getOrCreate(Player player) {
         return CACHE.computeIfAbsent(player.getUUID(), uuid -> {
-            FoxMaidData data = new FoxMaidData();
+            // 活跃状态一旦实际改变（开→关/关→开）立即广播一次状态包，
+            // 不等 20 tick 脏标记周期——覆盖命令、API、调试器反射等一切写入路径，
+            // 保证客户端"人是狐"与饰品栏标志（含梦云水晶光环判定）即时刷新。
+            FoxMaidData data = new FoxMaidData(() -> persistAndSync(player));
             CompoundTag root = player.getPersistentData();
             if (root.contains(Constants.ROOT_TAG)) {
                 data.read(root.getCompound(Constants.ROOT_TAG));

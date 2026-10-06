@@ -51,6 +51,16 @@ public final class ClientFoxState {
     }
 
     /**
+     * 该实体饰品栏是否含梦云水晶（服务端每 20 tick 随状态包刷新，用于光环渲染）。
+     */
+    public static boolean hasDreamCrystal(@Nullable Entity entity) {
+        if (entity == null) {
+            return false;
+        }
+        return get(entity.getId()).map(FoxMaidStateView::hasDreamCrystal).orElse(false);
+    }
+
+    /**
      * 断开连接时清空缓存，避免残留到下个世界。
      */
     public static void clear() {

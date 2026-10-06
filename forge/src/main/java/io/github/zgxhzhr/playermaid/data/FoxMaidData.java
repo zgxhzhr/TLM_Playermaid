@@ -1,12 +1,12 @@
 package io.github.zgxhzhr.playermaid.data;
 
 import com.github.tartaricacid.touhoulittlemaid.item.bauble.BaubleManager;
+import com.mojang.logging.LogUtils;
 import io.github.zgxhzhr.playermaid.Constants;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.items.ItemStackHandler;
-import net.minecraftforge.registries.ForgeRegistries;
+import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
 
@@ -18,10 +18,13 @@ import javax.annotation.Nullable;
  */
 public class FoxMaidData {
 
+    private static final Logger LOGGER = LogUtils.getLogger();
+
     // ===== NBT 键名 =====
     private static final String TAG_ACTIVE = "Active";
     private static final String TAG_RENDER_NAME = "RenderName";
     private static final String TAG_OWNER_NAME = "OwnerName";
+    private static final String TAG_SLAB_MODEL_ID = "SlabModelId";
     private static final String TAG_FAVORABILITY = "Favorability";
     private static final String TAG_SCHEDULE = "Schedule";
     private static final String TAG_INVULNERABLE = "Invulnerable";
@@ -32,10 +35,6 @@ public class FoxMaidData {
     /** 默认工作模式：空闲（车万女仆默认任务）。 */
     public static final String DEFAULT_TASK_UID = "touhou_little_maid:idle";
 
-    /** 第三方法术模组的光环饰品 id：装备后在玩家脑后渲染女仆光环。 */
-    private static final ResourceLocation HALO_BAUBLE_ID =
-            new ResourceLocation("touhou_little_maid_spell", "dream_cat_crystal");
-
     /** 人是狐开关。 */
     private boolean active;
     /** 自定义渲染名（仅头顶名牌与 Jade 标题），null 表示不覆盖。 */
@@ -44,6 +43,9 @@ public class FoxMaidData {
     /** 主人显示名（Jade 面板展示），null 表示未设置。 */
     @Nullable
     private String ownerName;
+    /** 魂符展示模型 id（车万女仆女仆模型 id），null 表示未设置；收容进魂符时写入魂符 NBT 供预览渲染。 */
+    @Nullable
+    private String slabModelId;
     /** 好感度点数（0-384）。 */
     private int favorability;
     /** 日程模式。 */
@@ -95,6 +97,24 @@ public class FoxMaidData {
     /** 脏标记：内容变更后置 true，玩家保存时据此写回 NBT。 */
     private transient boolean dirty;
 
+    /** 活跃状态实际发生变化时的回调（服务端用于立即广播状态包，见 {@link FoxMaidManager#getOrCreate}）。 */
+    @Nullable
+    private final Runnable activeChangeListener;
+
+    /** 无回调构造（客户端虚拟槽等场景）。 */
+    public FoxMaidData() {
+        this(null);
+    }
+
+    /**
+     * 带回调构造。
+     *
+     * @param activeChangeListener 活跃状态从关→开或开→关时执行的回调；可为 null
+     */
+    public FoxMaidData(@Nullable Runnable activeChangeListener) {
+        this.activeChangeListener = activeChangeListener;
+    }
+
     // ===== 标量读写 =====
 
     public boolean isActive() {
@@ -105,6 +125,10 @@ public class FoxMaidData {
         if (this.active != active) {
             this.active = active;
             dirty = true;
+            // 立即广播一次状态包（不等 20 tick 周期），保证客户端饰品栏标志随开关即时刷新
+            if (activeChangeListener != null) {
+                activeChangeListener.run();
+            }
         }
     }
 
@@ -126,6 +150,16 @@ public class FoxMaidData {
 
     public void setOwnerName(@Nullable String ownerName) {
         this.ownerName = normalize(ownerName);
+        dirty = true;
+    }
+
+    @Nullable
+    public String getSlabModelId() {
+        return slabModelId;
+    }
+
+    public void setSlabModelId(@Nullable String slabModelId) {
+        this.slabModelId = normalize(slabModelId);
         dirty = true;
     }
 
@@ -165,17 +199,6 @@ public class FoxMaidData {
             this.taskUid = taskUid;
             dirty = true;
         }
-    }
-
-    /** 饰品栏中是否装备有光环饰品（用于玩家侧光环渲染同步）。 */
-    public boolean hasHaloBauble() {
-        for (int i = 0; i < baubles.getSlots(); i++) {
-            ItemStack stack = baubles.getStackInSlot(i);
-            if (!stack.isEmpty() && HALO_BAUBLE_ID.equals(ForgeRegistries.ITEMS.getKey(stack.getItem()))) {
-                return true;
-            }
-        }
-        return false;
     }
 
     public ItemStackHandler getBaubles() {
@@ -244,6 +267,10 @@ public class FoxMaidData {
         if (ownerName != null) {
             tag.putString(TAG_OWNER_NAME, ownerName);
         }
+        if (slabModelId != null) {
+            tag.putString(TAG_SLAB_MODEL_ID, slabModelId);
+            LOGGER.info("[playermaid] FoxMaidData.write: 持久化魂符展示模型 键={} 值={}", TAG_SLAB_MODEL_ID, slabModelId);
+        }
         tag.putInt(TAG_FAVORABILITY, favorability);
         tag.putString(TAG_SCHEDULE, schedule.name());
         tag.putBoolean(TAG_INVULNERABLE, invulnerable);
@@ -260,6 +287,8 @@ public class FoxMaidData {
         active = tag.getBoolean(TAG_ACTIVE);
         renderName = tag.contains(TAG_RENDER_NAME) ? normalize(tag.getString(TAG_RENDER_NAME)) : null;
         ownerName = tag.contains(TAG_OWNER_NAME) ? normalize(tag.getString(TAG_OWNER_NAME)) : null;
+        // 旧存档可能没有该键，容错为 null
+        slabModelId = tag.contains(TAG_SLAB_MODEL_ID) ? normalize(tag.getString(TAG_SLAB_MODEL_ID)) : null;
         favorability = Math.max(0, Math.min(Constants.MAX_FAVORABILITY, tag.getInt(TAG_FAVORABILITY)));
         schedule = ScheduleMode.fromName(tag.getString(TAG_SCHEDULE));
         invulnerable = tag.getBoolean(TAG_INVULNERABLE);

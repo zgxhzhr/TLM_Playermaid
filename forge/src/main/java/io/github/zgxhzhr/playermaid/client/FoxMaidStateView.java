@@ -7,20 +7,20 @@ import javax.annotation.Nullable;
 /**
  * 客户端持有的玩家人是狐状态只读视图（由服务端同步）。
  *
- * @param entityId      玩家实体 id
- * @param active        是否处于人是狐状态
- * @param renderName    自定义渲染名（null 表示无）
- * @param ownerName     主人显示名（null 表示未设置）
- * @param favorability  好感度点数 0-384
- * @param schedule      日程模式
- * @param invulnerable  无敌展示开关
- * @param taskUid       当前工作模式（车万女仆任务 uid）
- * @param hasHalo       是否装备光环饰品（玩家侧光环渲染开关）
+ * @param entityId        玩家实体 id
+ * @param active          是否处于人是狐状态
+ * @param renderName      自定义渲染名（null 表示无）
+ * @param ownerName       主人显示名（null 表示未设置）
+ * @param favorability    好感度点数 0-384
+ * @param schedule        日程模式
+ * @param invulnerable    无敌展示开关
+ * @param taskUid         当前工作模式（车万女仆任务 uid）
+ * @param hasDreamCrystal 饰品栏是否含有梦云水晶（用于玩家光环渲染）
  */
 public record FoxMaidStateView(int entityId, boolean active, @Nullable String renderName,
                                @Nullable String ownerName, int favorability,
                                ScheduleMode schedule, boolean invulnerable,
-                               String taskUid, boolean hasHalo) {
+                               String taskUid, boolean hasDreamCrystal) {
 
     /**
      * 好感度等级（阈值与车万女仆一致）。

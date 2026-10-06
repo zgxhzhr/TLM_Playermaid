@@ -12,7 +12,8 @@ import net.minecraftforge.network.NetworkEvent;
 import java.util.function.Supplier;
 
 /**
- * S2C：同步单个玩家的人是狐标量状态给客户端（不含背包/饰品物品）。
+ * S2C：同步单个玩家的人是狐标量状态给客户端（不含背包/饰品物品本体，
+ * 仅带"饰品栏是否含梦云水晶"标志，供玩家光环渲染）。
  */
 public class SyncFoxStatePacket {
 
@@ -24,11 +25,11 @@ public class SyncFoxStatePacket {
     private final ScheduleMode schedule;
     private final boolean invulnerable;
     private final String taskUid;
-    private final boolean hasHalo;
+    private final boolean hasDreamCrystal;
 
     public SyncFoxStatePacket(int entityId, boolean active, String renderName, String ownerName,
                               int favorability, ScheduleMode schedule, boolean invulnerable,
-                              String taskUid, boolean hasHalo) {
+                              String taskUid, boolean hasDreamCrystal) {
         this.entityId = entityId;
         this.active = active;
         this.renderName = renderName;
@@ -37,13 +38,14 @@ public class SyncFoxStatePacket {
         this.schedule = schedule;
         this.invulnerable = invulnerable;
         this.taskUid = taskUid;
-        this.hasHalo = hasHalo;
+        this.hasDreamCrystal = hasDreamCrystal;
     }
 
     public static SyncFoxStatePacket of(int entityId, FoxMaidData data) {
         return new SyncFoxStatePacket(entityId, data.isActive(), data.getRenderName(), data.getOwnerName(),
                 data.getFavorability(), data.getSchedule(), data.isInvulnerable(),
-                data.getTaskUid(), data.hasHaloBauble());
+                data.getTaskUid(), io.github.zgxhzhr.playermaid.bauble.PlayerMaidDreamCatBauble
+                        .containsDreamCrystal(data.getBaubles()));
     }
 
     public static void encode(SyncFoxStatePacket packet, FriendlyByteBuf buf) {
@@ -61,7 +63,7 @@ public class SyncFoxStatePacket {
         buf.writeEnum(packet.schedule);
         buf.writeBoolean(packet.invulnerable);
         buf.writeUtf(packet.taskUid);
-        buf.writeBoolean(packet.hasHalo);
+        buf.writeBoolean(packet.hasDreamCrystal);
     }
 
     public static SyncFoxStatePacket decode(FriendlyByteBuf buf) {
@@ -73,8 +75,8 @@ public class SyncFoxStatePacket {
         ScheduleMode schedule = buf.readEnum(ScheduleMode.class);
         boolean invulnerable = buf.readBoolean();
         String taskUid = buf.readUtf();
-        boolean hasHalo = buf.readBoolean();
-        return new SyncFoxStatePacket(entityId, active, renderName, ownerName, favorability, schedule, invulnerable, taskUid, hasHalo);
+        boolean hasDreamCrystal = buf.readBoolean();
+        return new SyncFoxStatePacket(entityId, active, renderName, ownerName, favorability, schedule, invulnerable, taskUid, hasDreamCrystal);
     }
 
     public static void handle(SyncFoxStatePacket packet, Supplier<NetworkEvent.Context> contextSupplier) {
@@ -83,7 +85,8 @@ public class SyncFoxStatePacket {
                 // 仅客户端执行：写入客户端状态缓存
                 DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> ClientFoxState.update(
                         new FoxMaidStateView(packet.entityId, packet.active, packet.renderName, packet.ownerName,
-                                packet.favorability, packet.schedule, packet.invulnerable, packet.taskUid, packet.hasHalo)))
+                                packet.favorability, packet.schedule, packet.invulnerable, packet.taskUid,
+                                packet.hasDreamCrystal)))
         );
         context.setPacketHandled(true);
     }

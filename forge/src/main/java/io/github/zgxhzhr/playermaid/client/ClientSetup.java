@@ -27,4 +27,13 @@ public final class ClientSetup {
                     FoxMaidMenus.BAUBLE.get(), FoxMaidBaubleScreen::new);
         });
     }
+
+    /** 注册梦云水晶玩家光环的模型层（供光环渲染器烘焙）。 */
+    @SubscribeEvent
+    public static void onRegisterLayerDefinitions(
+            net.minecraftforge.client.event.EntityRenderersEvent.RegisterLayerDefinitions event) {
+        event.registerLayerDefinition(
+                io.github.zgxhzhr.playermaid.client.model.PlayerHaloModel.LAYER_LOCATION,
+                io.github.zgxhzhr.playermaid.client.model.PlayerHaloModel::createBodyLayer);
+    }
 }

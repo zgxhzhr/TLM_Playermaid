@@ -23,3 +23,6 @@ eclipse
 run
 .vscode
 *.log
+
+# 第三方模组 jar（编译期依赖，不随本仓库分发）
+forge/libs-compileonly/

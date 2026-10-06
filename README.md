@@ -1,5 +1,26 @@
 # MultiLoader Template
 
+## 模组说明（人是狐 playermaid）
+
+Forge 1.20.1 专用模组，把「人是狐」做成可游玩的身份系统：
+
+- **主界面**：人是狐状态下按背包键（默认 E）打开主人界面，顶部 36 格直接映射目标玩家真实背包（上半 27 格主背包、下半 9 格快捷栏），底部为访客背包。
+- **名牌/渲染名**：人是狐玩家头顶名牌仅在准星对准时显示；渲染名由调试器（superdbg）写入，头顶名牌与 Jade 标题同步。
+- **聊天气泡**：随机颜文字与图片表情（复用女仆表情贴图），悬浮头顶正上方，与任何模型模组渲染方式无关。
+- **魂符收容**：空魂符（touhou_little_maid:smart_slab_empty）右键人是狐玩家可收容：
+  - 被收容玩家传送进收容维度，收到提示「你被收容到魂符中」；魂符变为装有人的形态。
+  - 装有人的魂符右键（收容者本人）可放出，被收容玩家被传送回点击者旁边。
+  - 装有人的魂符不能丢出背包，也不能转移进箱子、漏斗、潜影盒等非背包容器。
+- **收容维度**（playermaid:containment，数据包注册）：
+  - 18×18×18 基岩外壳、内衬去皮橡木、内部 16×16×16 空腔，光照恒为满亮。
+  - 无自然生成、禁放方块、禁止使用物品（吃食物除外）。
+  - 破坏方块瞬间破坏并立刻原样补回；连续破坏 10 次提示「魂符似乎发生了未知的变化」；
+    连续破坏 20 次挣脱魂符：被传送回收容者旁边、魂符消失，双方收到提示。
+
+构建：`gradlew :forge:build -x test --offline`；部署到 `mods` 目录，更换 jar 后必须完全重启游戏。
+
+---
+
 This project provides a Gradle project template that can compile mods for both Forge and Fabric using a common sourceset. This project does not require any third party libraries or dependencies. If you have any questions or want to discuss the project join our [Discord](https://discord.myceliummod.network).
 
 ## Getting Started
