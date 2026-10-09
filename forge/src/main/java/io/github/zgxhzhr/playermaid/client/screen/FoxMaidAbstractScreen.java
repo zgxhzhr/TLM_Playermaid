@@ -33,6 +33,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.Slot;
 
 import java.text.DecimalFormat;
 import java.util.ArrayList;
@@ -48,7 +49,8 @@ import java.util.Optional;
  * 车万女仆模组（Touhou Little Maid，作者 TartaricAcid，MIT 协议开源），特此声明。</p>
  *
  * <p>日程按钮与工作模式（任务）切换会发包到服务端真实生效，任意访问者均可操作；
- * 顶部网格直接映射目标玩家的真实背包，底部访问者背包正常可操作。</p>
+ * 顶部网格直接映射目标玩家的真实背包；自己查看自己时底部访问者背包与顶部网格
+ * 指向同一份数据，因此底部锁为只读展示，避免同一件物品在两处都能操作。</p>
  */
 public abstract class FoxMaidAbstractScreen<T extends FoxMaidBaseMenu> extends AbstractContainerScreen<T> {
 
@@ -60,6 +62,12 @@ public abstract class FoxMaidAbstractScreen<T extends FoxMaidBaseMenu> extends A
             new ResourceLocation(TouhouLittleMaid.MOD_ID, "textures/gui/maid_gui_button.png");
     protected static final ResourceLocation TASK =
             new ResourceLocation(TouhouLittleMaid.MOD_ID, "textures/gui/maid_gui_task.png");
+    /** 车万女仆大背包贴图，主界面据此绘制装备槽与背包格所在的底板。 */
+    protected static final ResourceLocation BACKPACK_BG =
+            new ResourceLocation(TouhouLittleMaid.MOD_ID, "textures/gui/maid_gui_backpack.png");
+
+    /** 锁定槽位上叠加的半透明灰色遮罩：盖住槽位让人一眼看出不可操作，但仍能看清底下的物品。 */
+    private static final int LOCKED_SLOT_OVERLAY = 0x80000000;
 
     private static final DecimalFormat DECIMAL_FORMAT = new DecimalFormat("00");
 
@@ -313,8 +321,29 @@ public abstract class FoxMaidAbstractScreen<T extends FoxMaidBaseMenu> extends A
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTicks) {
         super.render(graphics, mouseX, mouseY, partialTicks);
+        // 槽位物品由原版在 super.render 内部绘制（z=100），这里抬高到其之上叠加锁定标记；
+        // 悬停的物品提示由外层随后绘制，因此遮罩不会盖住提示。
+        this.drawLockedSlots(graphics);
         this.drawCurrentTaskText(graphics);
         this.renderFoxTooltips(graphics, mouseX, mouseY);
+    }
+
+    /** 在只读锁定槽位上叠加灰色遮罩，提示这里的物品只能查看、不能取出或放入。 */
+    private void drawLockedSlots(GuiGraphics graphics) {
+        if (this.menu.slots.stream().noneMatch(FoxMaidBaseMenu::isLocked)) {
+            return;
+        }
+        graphics.pose().pushPose();
+        graphics.pose().translate(0.0F, 0.0F, 300.0F);
+        for (Slot slot : this.menu.slots) {
+            if (!FoxMaidBaseMenu.isLocked(slot) || !slot.isActive()) {
+                continue;
+            }
+            int x = leftPos + slot.x;
+            int y = topPos + slot.y;
+            graphics.fill(x, y, x + 16, y + 16, LOCKED_SLOT_OVERLAY);
+        }
+        graphics.pose().popPose();
     }
 
     @Override

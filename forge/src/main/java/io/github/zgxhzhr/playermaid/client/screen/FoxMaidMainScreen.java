@@ -1,6 +1,5 @@
 package io.github.zgxhzhr.playermaid.client.screen;
 
-import com.github.tartaricacid.touhoulittlemaid.TouhouLittleMaid;
 import com.github.tartaricacid.touhoulittlemaid.client.gui.widget.button.BaubleButton;
 import com.github.tartaricacid.touhoulittlemaid.compat.curios.CuriosCompat;
 import com.github.tartaricacid.touhoulittlemaid.compat.curios.client.CuriosButton;
@@ -9,18 +8,16 @@ import io.github.zgxhzhr.playermaid.network.NetworkHandler;
 import io.github.zgxhzhr.playermaid.network.packet.OpenFoxMaidMenuPacket;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
 
 /**
  * 人是狐主界面：车万女仆 {@code maid_gui_main.png} 基底叠加
  * {@code maid_gui_backpack.png}（与 TLM 大背包界面一致）；顶部 36 格直接映射
- * 目标玩家的真实背包，与底部访问者背包为同一份数据，可正常存取。
+ * 目标玩家的真实背包，与底部访问者背包为同一份数据。
+ * 其中与主手槽指向同一下标的那一格，以及自己查看自己时的底部访问者背包，
+ * 均为只读锁定样式（内容照常显示，但不能取出或放入）。
  */
 public class FoxMaidMainScreen extends FoxMaidAbstractScreen<FoxMaidMainMenu> {
-
-    private static final ResourceLocation BACKPACK_BG =
-            new ResourceLocation(TouhouLittleMaid.MOD_ID, "textures/gui/maid_gui_backpack.png");
 
     public FoxMaidMainScreen(FoxMaidMainMenu menu, Inventory inventory, Component title) {
         super(menu, inventory);

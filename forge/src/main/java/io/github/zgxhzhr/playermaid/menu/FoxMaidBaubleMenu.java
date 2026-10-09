@@ -64,7 +64,9 @@ public class FoxMaidBaubleMenu extends FoxMaidBaseMenu {
                     return ItemStack.EMPTY;
                 }
             }
-        } else if (!moveItemStackTo(original, 0, VISITOR_INVENTORY_SIZE, true)) {
+        } else if (!moveItemStackTo(original, 0, VISITOR_INVENTORY_SIZE, true)
+                // 自己看自己时底部访问者背包是只读视图，装备改为 shift 到饰品区
+                && !moveItemStackTo(original, EQUIPMENT_END, this.slots.size(), false)) {
             return ItemStack.EMPTY;
         }
         if (original.isEmpty()) {

@@ -5,6 +5,7 @@ import io.github.zgxhzhr.playermaid.data.FoxMaidData;
 import io.github.zgxhzhr.playermaid.data.FoxMaidManager;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.Container;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -15,6 +16,8 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
 
 import javax.annotation.Nullable;
+
+import java.util.function.BooleanSupplier;
 
 import static net.minecraft.world.inventory.InventoryMenu.BLOCK_ATLAS;
 import static net.minecraft.world.inventory.InventoryMenu.EMPTY_ARMOR_SLOT_SHIELD;
@@ -39,23 +42,75 @@ public abstract class FoxMaidBaseMenu extends AbstractContainerMenu {
     /** 被查看的目标玩家。 */
     protected final Player target;
 
+    /** 访问者背包是否被锁定为只读（自己查看自己时为真）。 */
+    protected final boolean visitorLocked;
+
     protected FoxMaidBaseMenu(@Nullable MenuType<?> type, int id, Inventory visitorInventory, Player target) {
         super(type, id);
         this.target = target;
-        addVisitorInventory(visitorInventory);
+        // 自己查看自己时，底部访问者背包与顶部女仆背包指向的是同一份真实背包数据，
+        // 两处都能操作会让同一件物品既在这里被取走又在那边被取出，因此底部统一锁为只读展示。
+        this.visitorLocked = visitorInventory.player == target;
+        addVisitorInventory(visitorInventory, visitorLocked);
         addTargetEquipment();
     }
 
     /** 访问者背包：三排主背包 + 一排快捷栏（车万女仆坐标）。 */
-    private void addVisitorInventory(Inventory visitorInventory) {
+    private void addVisitorInventory(Inventory visitorInventory, boolean locked) {
         for (int row = 0; row < 3; ++row) {
             for (int col = 0; col < 9; ++col) {
-                addSlot(new Slot(visitorInventory, col + row * 9 + 9, 88 + col * 18, 174 + row * 18));
+                addSlot(createSlot(visitorInventory, col + row * 9 + 9, 88 + col * 18, 174 + row * 18, locked));
             }
         }
         for (int col = 0; col < 9; ++col) {
-            addSlot(new Slot(visitorInventory, col, 88 + col * 18, 232));
+            addSlot(createSlot(visitorInventory, col, 88 + col * 18, 232, locked));
         }
+    }
+
+    /** 恒定锁定的条件。 */
+    private static final BooleanSupplier ALWAYS_LOCKED = () -> true;
+
+    /** 按需创建普通槽或只读锁定槽。 */
+    protected static Slot createSlot(Container container, int index, int x, int y, boolean locked) {
+        return locked
+                ? new LockedSlot(container, index, x, y, ALWAYS_LOCKED)
+                : new Slot(container, index, x, y);
+    }
+
+    /**
+     * 只读锁定槽：仍然映射真实的背包数据（内容照常显示与同步），
+     * 但在 {@code locked} 条件成立时既不能取出也不能放入，界面上会叠加灰色遮罩。
+     *
+     * <p>条件按当前背包状态实时求值，因此锁定与否可以随数据变化（例如主手清空后自动恢复可用）。</p>
+     */
+    protected static class LockedSlot extends Slot {
+
+        private final BooleanSupplier locked;
+
+        LockedSlot(Container container, int index, int x, int y, BooleanSupplier locked) {
+            super(container, index, x, y);
+            this.locked = locked;
+        }
+
+        /** 此刻是否处于锁定状态。 */
+        boolean isLocked() {
+            return locked.getAsBoolean();
+        }
+
+        @Override
+        public boolean mayPlace(ItemStack stack) {
+            return !isLocked();
+        }
+
+        @Override
+        public boolean mayPickup(Player player) {
+            return !isLocked();
+        }
+    }
+
+    /** 该槽此刻是否为只读锁定槽（界面据此叠加灰色遮罩）。 */
+    public static boolean isLocked(Slot slot) {
+        return slot instanceof LockedSlot locked && locked.isLocked();
     }
 
     /**
@@ -127,14 +182,19 @@ public abstract class FoxMaidBaseMenu extends AbstractContainerMenu {
     }
 
     /**
-     * 容器关闭（服务端）：把目标玩家的人是狐数据写回 persistentData，
-     * 确保背包/饰品改动及时落盘，不必等到玩家登出。
+     * 容器关闭（服务端）：把目标玩家的人是狐数据写回 persistentData，并立即广播状态包，
+     * 确保背包/饰品改动既及时落盘、又及时同步到客户端。
+     *
+     * <p>此处必须用 {@code persistAndSync} 而非 {@code persist}：{@code persist} 只写 NBT
+     * 并清脏标记、不发包。饰品栏变动（含放置/取下梦云水晶）会置脏，若关闭界面时用
+     * {@code persist}，脏标记被清掉却从未广播，客户端 {@code hasDreamCrystal} 会一直停留在
+     * 旧值，导致头顶光环迟迟不出现（要等到登出重进、复活或他人开始追踪才补发）。</p>
      */
     @Override
     public void removed(Player visitor) {
         super.removed(visitor);
         if (!target.level().isClientSide) {
-            FoxMaidManager.persist(target);
+            FoxMaidManager.persistAndSync(target);
         }
     }
 
@@ -156,28 +216,16 @@ public abstract class FoxMaidBaseMenu extends AbstractContainerMenu {
     }
 
     /**
-     * 通用 shift 移动：访问者背包 ↔ 目标区域。
+     * shift 移动的收尾：清空来源槽、标记变化，返回本次被移动的物品副本。
      *
-     * <p>自己查看自己时，顶部映射槽与底部访问者槽指向同一份真实背包数据；
-     * 若直接调用原版 {@code moveItemStackTo}，同一格会被识别为「可堆叠目标」
-     * 而把数量翻倍。因此这里跳过与来源槽指向同一（容器, 下标）的目标槽。</p>
+     * <p>子类实现 {@link #quickMoveStack} 时，把实际搬运结果 {@code moved} 传进来即可
+     * 复用这段逻辑，不必各自重复。</p>
      *
-     * @param targetStart 目标区域起始槽索引（含）
-     * @param targetEnd   目标区域结束槽索引（不含）
+     * @return 实际移动了的物品；没有移动时返回空
      */
-    protected ItemStack quickMoveBetween(Player player, int index, int targetStart, int targetEnd,
-                                         boolean preferTargetTail) {
-        Slot slot = slots.get(index);
-        if (slot == null || !slot.hasItem()) {
-            return ItemStack.EMPTY;
-        }
-        ItemStack original = slot.getItem();
-        ItemStack copy = original.copy();
-        if (index < VISITOR_INVENTORY_SIZE) {
-            if (!moveItemStack(original, targetStart, targetEnd, preferTargetTail, slot)) {
-                return ItemStack.EMPTY;
-            }
-        } else if (!moveItemStack(original, 0, VISITOR_INVENTORY_SIZE, true, slot)) {
+    protected ItemStack finishQuickMove(Player player, Slot slot, ItemStack original, ItemStack copy,
+                                        boolean moved) {
+        if (!moved) {
             return ItemStack.EMPTY;
         }
         if (original.isEmpty()) {
@@ -192,9 +240,14 @@ public abstract class FoxMaidBaseMenu extends AbstractContainerMenu {
         return copy;
     }
 
-    /** 与原版 {@code moveItemStackTo} 相同的合并/填充逻辑，额外跳过与来源槽重叠的目标槽。 */
-    private boolean moveItemStack(ItemStack stack, int startIndex, int endIndex, boolean reverseDirection,
-                                  Slot source) {
+    /**
+     * 与原版 {@code moveItemStackTo} 相同的合并/填充逻辑。
+     *
+     * <p>额外跳过与来源槽重叠的目标槽：自己查看自己时顶部映射槽与底部访问者槽
+     * 指向同一份真实背包数据，若不跳过，同一格会被识别为「可堆叠目标」而把数量翻倍。</p>
+     */
+    protected boolean moveItemStack(ItemStack stack, int startIndex, int endIndex, boolean reverseDirection,
+                                    Slot source) {
         boolean changed = false;
         if (stack.isStackable()) {
             for (int i = reverseDirection ? endIndex - 1 : startIndex;
@@ -202,7 +255,7 @@ public abstract class FoxMaidBaseMenu extends AbstractContainerMenu {
                  i += reverseDirection ? -1 : 1) {
                 Slot slot = slots.get(i);
                 ItemStack existing = slot.getItem();
-                if (!isSameSlot(slot, source) && !existing.isEmpty()
+                if (!isSameSlot(slot, source) && slot.mayPlace(stack) && !existing.isEmpty()
                         && ItemStack.isSameItemSameTags(stack, existing)) {
                     int total = existing.getCount() + stack.getCount();
                     if (total <= stack.getMaxStackSize()) {

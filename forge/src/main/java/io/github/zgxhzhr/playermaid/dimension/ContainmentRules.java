@@ -179,10 +179,18 @@ public final class ContainmentRules {
 
     /** 重置收容房间外壳：按生成器规则全量重设基岩/去皮橡木/空气，玩家破坏过的方块复原。 */
     private static void resetShell(ServerLevel level) {
+        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
         for (int x = SHELL_MIN_X; x <= SHELL_MAX_X; x++) {
             for (int y = SHELL_MIN_Y; y <= SHELL_MAX_Y; y++) {
                 for (int z = SHELL_MIN_Z; z <= SHELL_MAX_Z; z++) {
-                    level.setBlock(new BlockPos(x, y, z), ContainmentChunkGenerator.blockAt(x, y, z), 3);
+                    BlockState target = ContainmentChunkGenerator.blockAt(x, y, z);
+                    pos.set(x, y, z);
+                    // 房间内近半数是空气，先比对方块状态可省下大量无谓的 setBlock
+                    if (level.getBlockState(pos) == target) {
+                        continue;
+                    }
+                    // flag 2 = 仅同步客户端，跳过邻居更新（外壳是固定结构，不需要连锁更新）
+                    level.setBlock(pos, target, 2);
                 }
             }
         }
