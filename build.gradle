@@ -1,0 +1,19 @@
+plugins {
+    // see https://fabricmc.net/develop/ for new versions
+    id 'fabric-loom' version '1.8-SNAPSHOT' apply false
+    // see https://projects.neoforged.net/neoforged/moddevgradle for new versions
+    id 'net.neoforged.moddev' version '2.0.49-beta' apply false
+}
+
+// 源码注释为中文，统一使用 UTF-8 编译（Windows 默认 GBK 会导致 javac 报错）；
+// 同时不允许 Javadoc 的文档瑕疵（中文字符、未写 @param 等）阻断构建。
+subprojects {
+    tasks.withType(JavaCompile).configureEach {
+        options.encoding = 'UTF-8'
+    }
+    tasks.withType(Javadoc).configureEach {
+        options.encoding = 'UTF-8'
+        options.charSet = 'UTF-8'
+        failOnError = false
+    }
+}

@@ -1,0 +1,10 @@
+{
+  "type": "playermaid:containment",
+  "generator": {
+    "type": "playermaid:containment_chunk_generator",
+    "biome_source": {
+      "type": "minecraft:fixed",
+      "biome": "minecraft:the_void"
+    }
+  }
+}

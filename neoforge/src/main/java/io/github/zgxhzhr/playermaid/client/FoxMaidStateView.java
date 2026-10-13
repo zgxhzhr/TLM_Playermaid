@@ -1,0 +1,58 @@
+package io.github.zgxhzhr.playermaid.client;
+
+import io.github.zgxhzhr.playermaid.data.ScheduleMode;
+
+import javax.annotation.Nullable;
+
+/**
+ * 客户端持有的玩家人是狐状态只读视图（由服务端同步）。
+ *
+ * @param entityId        玩家实体 id
+ * @param active          是否处于人是狐状态
+ * @param renderName      自定义渲染名（null 表示无）
+ * @param ownerName       主人显示名（null 表示未设置）
+ * @param ownerUuid       主人 UUID 字符串（真实实体引用，null 表示未认主）
+ * @param favorability    好感度点数 0-384
+ * @param schedule        日程模式
+ * @param invulnerable    无敌展示开关
+ * @param taskUid         当前工作模式（车万女仆任务 uid）
+ * @param hasDreamCrystal 饰品栏是否含有梦云水晶（用于玩家光环渲染）
+ */
+public record FoxMaidStateView(int entityId, boolean active, @Nullable String renderName,
+                               @Nullable String ownerName, @Nullable String ownerUuid, int favorability,
+                               ScheduleMode schedule, boolean invulnerable,
+                               String taskUid, boolean hasDreamCrystal) {
+
+    /** 是否已认主（真实主人引用存在）。 */
+    public boolean hasOwner() {
+        return ownerUuid != null && !ownerUuid.isEmpty();
+    }
+
+    /**
+     * 好感度等级（阈值与车万女仆一致）。
+     */
+    public int favorabilityLevel() {
+        if (favorability < 64) {
+            return 0;
+        }
+        if (favorability < 192) {
+            return 1;
+        }
+        if (favorability < 384) {
+            return 2;
+        }
+        return 3;
+    }
+
+    /**
+     * 距下一等级所需点数，满级返回 0。
+     */
+    public int nextLevelPoint() {
+        return switch (favorabilityLevel()) {
+            case 0 -> 64 - favorability;
+            case 1 -> 192 - favorability;
+            case 2 -> 384 - favorability;
+            default -> 0;
+        };
+    }
+}

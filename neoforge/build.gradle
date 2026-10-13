@@ -1,0 +1,56 @@
+plugins {
+    id 'multiloader-loader'
+    id 'net.neoforged.moddev'
+}
+
+neoForge {
+    version = neoforge_version
+    // Automatically enable neoforge AccessTransformers if the file exists
+    def at = project(':common').file('src/main/resources/META-INF/accesstransformer.cfg')
+    if (at.exists()) {
+        accessTransformers.from(at.absolutePath)
+    }
+    parchment {
+        minecraftVersion = parchment_minecraft
+        mappingsVersion = parchment_version
+    }
+    runs {
+        configureEach {
+            systemProperty('neoforge.enabledGameTestNamespaces', mod_id)
+            ideName = "NeoForge ${it.name.capitalize()} (${project.path})" // Unify the run config names with fabric
+        }
+        client {
+            client()
+        }
+        data {
+            data()
+
+            // DataGen can be run by - "./gradlew :neoforge:runData" in Terminal.
+            // Specify the modid for data generation, where to output the resulting resource, and where to look for existing resources.
+            programArguments.addAll '--mod', project.mod_id, '--all', '--output', file('src/generated/resources/').getAbsolutePath(), '--existing', file('src/main/resources/').getAbsolutePath()
+
+        }
+        server {
+            server()
+        }
+    }
+    mods {
+        "${mod_id}" {
+            sourceSet sourceSets.main
+        }
+    }
+}
+
+sourceSets.main.resources { srcDir 'src/generated/resources' }
+
+dependencies {
+    // 编译期依赖（仅符号，不打包；运行期由整合包提供）：
+    // - 车万女仆 touhou_little_maid：硬依赖，GUI 贴图、女仆饰品判定、容器/任务 API
+    // - Jade：软依赖，准心女仆信息面板与模组名行（缺席时相关 Mixin/插件不加载）
+    // - Curios：软依赖，女仆侧 Curios 兼容按钮
+    // jar 为生产环境同款，moddev 会将其重映射到当前开发映射；文件名不写死版本号意义不大，
+    // 因此按 gradle.properties 中的路径逐项引入，更新时只替换文件。
+    compileOnly files(rootProject.file(tlm_jar_path))
+    compileOnly files(rootProject.file(jade_jar_path))
+    compileOnly files(rootProject.file(curios_jar_path))
+}
